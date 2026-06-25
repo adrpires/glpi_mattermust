@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  glpi-webhook:
+    build: .
+    container_name: glpi-webhook-server
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - MATTERMOST_WEBHOOK_URL=${MATTERMOST_WEBHOOK_URL}
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - glpi-network
+
+networks:
+  glpi-network:
+    driver: bridge
