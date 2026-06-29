@@ -22,12 +22,16 @@ HEADERS = {
 def glpi_webhook():
     try:
         data = request.get_json()
-        print(f"Dados recebidos do GLPI: {json.dumps(data, indent=2)}")
+        print(f"\n📨 Dados recebidos do GLPI: {json.dumps(data, indent=2)}")
+        print(f"🔑 Token: {MATTERMOST_TOKEN[:20]}...")
+        print(f"👤 Username: {MATTERMOST_USERNAME}")
 
         # Formata a mensagem para o Mattermost
         message = format_message(data)
+        print(f"📝 Mensagem: {message}")
 
         # Envia DM via API do Mattermost
+        print(f"📤 Enviando DM para {MATTERMOST_USERNAME}...")
         success = send_dm(MATTERMOST_USERNAME, message)
 
         if success:
