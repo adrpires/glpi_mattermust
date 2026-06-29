@@ -2,12 +2,13 @@
 from flask import Flask, request
 import requests
 import json
+import os
 from datetime import datetime
 
 app = Flask(__name__)
 
-# Configuração
-MATTERMOST_WEBHOOK_URL = "https://chat.macielvieiracoelho.com.br/hooks/usy75cq3ptf7iy115fg7toobzo"
+# Configuração - lê da variável de ambiente
+MATTERMOST_WEBHOOK_URL = os.getenv('MATTERMOST_WEBHOOK_URL', 'http://192.168.1.10:8065/hooks/3b5ypip89ig48qmstrbtwmipjw')
 
 @app.route('/webhook/glpi', methods=['POST'])
 def glpi_webhook():
@@ -18,10 +19,11 @@ def glpi_webhook():
         # Formata a mensagem para o Mattermost
         message = format_message(data)
 
-        # Envia ao Mattermost
+        # Envia ao Mattermost (usando form-data)
+        payload = {"payload": json.dumps({"text": message})}
         response = requests.post(
             MATTERMOST_WEBHOOK_URL,
-            json={"text": message},
+            data=payload,
             timeout=5
         )
 
