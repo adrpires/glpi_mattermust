@@ -29,7 +29,13 @@ HEADERS = {
 @app.route('/webhook/glpi', methods=['POST'])
 def glpi_webhook():
     try:
-        data = request.get_json()
+        # Aceita JSON ou form-data
+        if request.is_json:
+            data = request.get_json()
+        else:
+            # Se for form-data, converte para dict
+            data = request.form.to_dict()
+
         print(f"\n📨 ===== DADOS COMPLETOS DO GLPI =====")
         print(json.dumps(data, indent=2))
         print(f"===== FIM DOS DADOS =====")
