@@ -113,23 +113,45 @@ def send_to_channel(channel_id, message):
 def format_message(data):
     """Formata os dados do GLPI em uma mensagem legível"""
 
-    # Tenta extrair informações do GLPI
-    ticket_id = data.get('id') or data.get('ticket_id') or 'N/A'
-    title = data.get('name') or data.get('title') or 'Sem título'
-    status = data.get('status') or 'N/A'
-    priority = data.get('priority') or 'N/A'
-    category = data.get('category') or 'N/A'
-    requester = data.get('requester') or data.get('requester_name') or 'N/A'
-    event_type = data.get('event_type') or data.get('action') or 'Evento'
+    # Extrai dados do GLPI (vem dentro de 'item')
+    item = data.get('item', {})
+    event_type = data.get('event', 'Evento').capitalize()
 
-    # Formata a mensagem
-    message = f"""**🎫 Notificação GLPI - {event_type}**
-- **ID:** {ticket_id}
+    # Mapeia nomes de eventos
+    event_names = {
+        'new': '🆕 Novo Chamado',
+        'update': '✏️ Chamado Atualizado',
+        'solved': '✅ Chamado Resolvido',
+        'closed': '🔒 Chamado Fechado'
+    }
+    event_display = event_names.get(data.get('event'), f'📋 {event_type}')
+
+    # Extrai informações com suporte a estrutura aninhada
+    ticket_id = item.get('id', 'N/A')
+    title = item.get('name', 'Sem título')
+
+    # Status, Categoria, etc podem ser dicts ou strings
+    status = item.get('status', {})
+    status_name = status.get('name') if isinstance(status, dict) else status or 'N/A'
+
+    category = item.get('category', {})
+    category_name = category.get('name') if isinstance(category, dict) else category or 'N/A'
+
+    priority = item.get('priority', 'N/A')
+
+    # Usuario que criou/recebeu
+    user_recipient = item.get('user_recipient', {})
+    user_name = user_recipient.get('name') if isinstance(user_recipient, dict) else user_recipient or 'N/A'
+
+    # Formata a mensagem com mention
+    message = f"""@{user_name}
+
+**{event_display}**
+- **ID:** #{ticket_id}
 - **Título:** {title}
-- **Status:** {status}
+- **Status:** {status_name}
 - **Prioridade:** {priority}
-- **Categoria:** {category}
-- **Requerente:** {requester}
+- **Categoria:** {category_name}
 - **Data:** {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}"""
 
     return message
