@@ -60,9 +60,39 @@ def glpi_webhook():
         message = format_message(data)
         print(f"📝 Mensagem: {message}")
 
-        # Envia para o canal via API
-        print(f"📤 Enviando para canal mvc-geral...")
-        success = send_to_channel(MATTERMOST_CHANNEL_ID, message)
+        # Extrai o usuário recipient para enviar DM
+        item = data.get('item', {})
+        parent_item = data.get('parent_item', {})
+
+        # Determina quem é o recipient (ticket pai se for acompanhamento, ou do item direto)
+        if parent_item:
+            user_recipient = parent_item.get('user_recipient', {})
+        else:
+            user_recipient = item.get('user_recipient', {})
+
+        username = user_recipient.get('name') if isinstance(user_recipient, dict) else user_recipient
+
+        if not username:
+            print(f"⚠️ Nenhum user_recipient encontrado, enviando para canal público")
+            success = send_to_channel(MATTERMOST_CHANNEL_ID, message)
+        else:
+            print(f"📤 Enviando DM para @{username}...")
+            # Busca o user_id no Mattermost
+            user_id = get_user_id_by_username(username)
+
+            if not user_id:
+                print(f"❌ Não conseguiu encontrar @{username} no Mattermost, enviando para canal público")
+                success = send_to_channel(MATTERMOST_CHANNEL_ID, message)
+            else:
+                # Cria/busca DM channel
+                dm_channel_id = create_dm_channel(user_id)
+
+                if not dm_channel_id:
+                    print(f"❌ Não conseguiu criar DM, enviando para canal público")
+                    success = send_to_channel(MATTERMOST_CHANNEL_ID, message)
+                else:
+                    # Envia para o DM
+                    success = send_to_channel(dm_channel_id, message)
 
         if success:
             print(f"✅ Mensagem enviada ao Mattermost com sucesso")
@@ -76,6 +106,51 @@ def glpi_webhook():
         return {'status': 'error', 'message': str(e)}, 500
 
 
+def get_user_id_by_username(username):
+    """Busca o user_id no Mattermost pelo username"""
+    try:
+        print(f"🔍 Buscando user_id para @{username}...")
+        url = f"{MATTERMOST_API_URL}/users/username/{username}"
+
+        response = requests.get(url, headers=MATTERMOST_HEADERS, timeout=5)
+
+        if response.status_code == 200:
+            user_data = response.json()
+            user_id = user_data.get('id')
+            print(f"✅ User encontrado: {username} (ID: {user_id})")
+            return user_id
+        else:
+            print(f"❌ User não encontrado: {username} - {response.status_code}")
+            return None
+    except Exception as e:
+        print(f"❌ Erro ao buscar user: {type(e).__name__}: {str(e)}")
+        return None
+
+def create_dm_channel(user_id):
+    """Cria ou busca um DM channel com o usuário"""
+    try:
+        print(f"💬 Criando/buscando DM com user_id: {user_id}...")
+        url = f"{MATTERMOST_API_URL}/channels/direct"
+
+        response = requests.post(
+            url,
+            headers=MATTERMOST_HEADERS,
+            json={'user_id': user_id},
+            timeout=5
+        )
+
+        if response.status_code in [200, 201]:
+            channel_data = response.json()
+            channel_id = channel_data.get('id')
+            print(f"✅ DM channel criado/encontrado: {channel_id}")
+            return channel_id
+        else:
+            print(f"❌ Erro ao criar DM: {response.status_code} - {response.text}")
+            return None
+    except Exception as e:
+        print(f"❌ Erro ao criar DM: {type(e).__name__}: {str(e)}")
+        return None
+
 def send_to_channel(channel_id, message):
     """Envia uma mensagem para um canal via API do Mattermost"""
     try:
@@ -84,7 +159,6 @@ def send_to_channel(channel_id, message):
 
         url = f"{MATTERMOST_API_URL}/posts"
         print(f"📤 URL: {url}")
-        print(f"🔐 Headers: {MATTERMOST_HEADERS}")
         print(f"📺 Canal ID: {channel_id}")
 
         response = requests.post(
@@ -101,14 +175,14 @@ def send_to_channel(channel_id, message):
         print(f"📋 Response: {response.text[:500]}")
 
         if response.status_code == 201:
-            print(f"✅ Mensagem postada no canal com sucesso!")
+            print(f"✅ Mensagem enviada com sucesso!")
             return True
         else:
-            print(f"❌ Erro ao postar: {response.status_code} - {response.text}")
+            print(f"❌ Erro ao enviar: {response.status_code} - {response.text}")
             return False
 
     except Exception as e:
-        print(f"❌ EXCEÇÃO ao enviar para canal: {type(e).__name__}: {str(e)}")
+        print(f"❌ EXCEÇÃO ao enviar mensagem: {type(e).__name__}: {str(e)}")
         import traceback
         traceback.print_exc()
         return False
