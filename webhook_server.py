@@ -111,8 +111,11 @@ def get_user_id_by_username(username):
     try:
         print(f"🔍 Buscando user_id para @{username}...")
         url = f"{MATTERMOST_API_URL}/users/username/{username}"
+        print(f"📤 URL: {url}")
 
         response = requests.get(url, headers=MATTERMOST_HEADERS, timeout=5)
+        print(f"📊 Status: {response.status_code}")
+        print(f"📋 Response: {response.text[:500]}")
 
         if response.status_code == 200:
             user_data = response.json()
@@ -131,6 +134,8 @@ def create_dm_channel(user_id):
     try:
         print(f"💬 Criando/buscando DM com user_id: {user_id}...")
         url = f"{MATTERMOST_API_URL}/channels/direct"
+        print(f"📤 URL: {url}")
+        print(f"📤 Payload: {{'user_id': '{user_id}'}}")
 
         response = requests.post(
             url,
@@ -139,10 +144,18 @@ def create_dm_channel(user_id):
             timeout=5
         )
 
+        print(f"📊 Status: {response.status_code}")
+        print(f"📋 Response: {response.text[:500]}")
+
         if response.status_code in [200, 201]:
             channel_data = response.json()
             channel_id = channel_data.get('id')
-            print(f"✅ DM channel criado/encontrado: {channel_id}")
+            channel_type = channel_data.get('type')
+            channel_name = channel_data.get('name')
+            print(f"✅ Channel criado/encontrado:")
+            print(f"   - ID: {channel_id}")
+            print(f"   - Type: {channel_type}")
+            print(f"   - Name: {channel_name}")
             return channel_id
         else:
             print(f"❌ Erro ao criar DM: {response.status_code} - {response.text}")
