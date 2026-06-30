@@ -3,7 +3,16 @@ from flask import Flask, request
 import requests
 import json
 import os
+import sys
+import logging
 from datetime import datetime
+
+# Força o stdout a ser unbuffered
+sys.stdout = sys.stderr = open(sys.stdout.fileno(), 'w', buffering=1, encoding='utf-8')
+
+# Configurar logging
+logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, format='%(message)s')
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
