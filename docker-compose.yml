@@ -8,7 +8,9 @@ services:
       - "8507:5000"
     environment:
       - FLASK_ENV=production
-      - MATTERMOST_WEBHOOK_URL=${MATTERMOST_WEBHOOK_URL}
+      - MATTERMOST_API_URL=http://192.168.1.10:8065/api/v4
+      - MATTERMOST_TOKEN=kr3f8h4iifre3ycfb6kxjmxk3a
+      - MATTERMOST_CHANNEL_ID=y846awehtpnw3q8uh54zq8r9ta
     restart: unless-stopped
     volumes:
       - ./logs:/app/logs
