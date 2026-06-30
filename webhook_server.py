@@ -131,9 +131,16 @@ def format_message(data):
     item = data.get('item', {})
     parent_item = data.get('parent_item', {})
 
+    print(f"🔍 DEBUG format_message:")
+    print(f"  - item.id: {item.get('id')}")
+    print(f"  - item.items_id: {item.get('items_id')}")
+    print(f"  - parent_item existe: {bool(parent_item)}")
+    print(f"  - parent_item.id: {parent_item.get('id') if parent_item else 'N/A'}")
+
     # Verifica se é um comentário (ITILFollowup) ou solução (ITILSolution)
     # Se tem 'items_id' no item, significa que é um acompanhamento/comentário do ticket pai
     is_followup = 'items_id' in item and parent_item
+    print(f"  - is_followup: {is_followup}")
 
     if is_followup:
         # É um comentário ou solução
@@ -162,6 +169,12 @@ def format_message(data):
             event_display = '✅ Solução Adicionada'
         else:
             event_display = '💬 Novo Acompanhamento'
+
+        print(f"🔍 DEBUG Acompanhamento:")
+        print(f"  - Ticket ID: {ticket_id}")
+        print(f"  - Title: {title}")
+        print(f"  - Status: {status_name}")
+        print(f"  - Category: {category_name}")
 
         # Formata a mensagem
         message = f"""@{user_name}
