@@ -8,8 +8,14 @@ from datetime import datetime
 app = Flask(__name__)
 
 # Configuração - lê das variáveis de ambiente
-MATTERMOST_WEBHOOK_URL = os.getenv('MATTERMOST_WEBHOOK_URL', 'http://192.168.1.10:8065/hooks/3b5ypip89ig48qmstrbtwmipjw')
-MATTERMOST_USERNAME = os.getenv('MATTERMOST_USERNAME', 'apires')
+MATTERMOST_API_URL = os.getenv('MATTERMOST_API_URL', 'http://192.168.1.10:8065/api/v4')
+MATTERMOST_TOKEN = os.getenv('MATTERMOST_TOKEN', 'kr3f8h4iifre3ycfb6kxjmxk3a')
+MATTERMOST_CHANNEL_ID = os.getenv('MATTERMOST_CHANNEL_ID', 'g4is7cbng7yg3d8p4o4us1i6re')
+
+HEADERS = {
+    'Authorization': f'Bearer {MATTERMOST_TOKEN}',
+    'Content-Type': 'application/json'
+}
 
 @app.route('/webhook/glpi', methods=['POST'])
 def glpi_webhook():
@@ -18,31 +24,51 @@ def glpi_webhook():
         print(f"\n📨 Dados recebidos do GLPI: {json.dumps(data, indent=2)}")
 
         # Formata a mensagem para o Mattermost
-        message = format_message(data, MATTERMOST_USERNAME)
+        message = format_message(data)
         print(f"📝 Mensagem: {message}")
 
-        # Envia via webhook do Mattermost (form-data)
-        print(f"📤 Enviando para Mattermost...")
-        payload = {"payload": json.dumps({"text": message})}
-        response = requests.post(
-            MATTERMOST_WEBHOOK_URL,
-            data=payload,
-            timeout=5
-        )
+        # Envia para o canal via API
+        print(f"📤 Enviando para canal mvc-geral...")
+        success = send_to_channel(MATTERMOST_CHANNEL_ID, message)
 
-        if response.status_code == 200:
+        if success:
             print(f"✅ Mensagem enviada ao Mattermost com sucesso")
             return {'status': 'success'}, 200
         else:
-            print(f"❌ Erro ao enviar ao Mattermost: {response.status_code} - {response.text}")
-            return {'status': 'error', 'message': response.text}, response.status_code
+            print(f"❌ Erro ao enviar ao Mattermost")
+            return {'status': 'error', 'message': 'Falha ao enviar mensagem'}, 500
 
     except Exception as e:
         print(f"❌ Erro no webhook: {str(e)}")
         return {'status': 'error', 'message': str(e)}, 500
 
-def format_message(data, username):
-    """Formata os dados do GLPI em uma mensagem legível com mention"""
+def send_to_channel(channel_id, message):
+    """Envia uma mensagem para um canal via API do Mattermost"""
+    try:
+        url = f"{MATTERMOST_API_URL}/posts"
+        response = requests.post(
+            url,
+            headers=HEADERS,
+            json={
+                'channel_id': channel_id,
+                'message': message
+            },
+            timeout=5
+        )
+
+        if response.status_code == 201:
+            print(f"✅ Mensagem postada no canal")
+            return True
+        else:
+            print(f"❌ Erro ao postar: {response.status_code} - {response.text}")
+            return False
+
+    except Exception as e:
+        print(f"❌ Erro ao enviar para canal: {str(e)}")
+        return False
+
+def format_message(data):
+    """Formata os dados do GLPI em uma mensagem legível"""
 
     # Tenta extrair informações do GLPI
     ticket_id = data.get('id') or data.get('ticket_id') or 'N/A'
@@ -53,10 +79,8 @@ def format_message(data, username):
     requester = data.get('requester') or data.get('requester_name') or 'N/A'
     event_type = data.get('event_type') or data.get('action') or 'Evento'
 
-    # Formata a mensagem com mention do usuário
-    message = f"""@{username}
-
-**🎫 Notificação GLPI - {event_type}**
+    # Formata a mensagem
+    message = f"""**🎫 Notificação GLPI - {event_type}**
 - **ID:** {ticket_id}
 - **Título:** {title}
 - **Status:** {status}
@@ -74,7 +98,7 @@ def health():
 
 if __name__ == '__main__':
     print("🚀 Iniciando servidor de webhook GLPI...")
-    print("📡 Webhook URL: " + MATTERMOST_WEBHOOK_URL)
-    print("👤 Username: " + MATTERMOST_USERNAME)
+    print("📡 API URL: " + MATTERMOST_API_URL)
+    print("📺 Canal ID: " + MATTERMOST_CHANNEL_ID)
     print("🏥 Health check: http://localhost:5000/health")
     app.run(host='0.0.0.0', port=5000, debug=True)
