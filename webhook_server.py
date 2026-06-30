@@ -29,14 +29,28 @@ HEADERS = {
 @app.route('/webhook/glpi', methods=['POST'])
 def glpi_webhook():
     try:
-        # Aceita JSON ou form-data
+        # Tenta todos os formatos possíveis
+        print(f"\n📨 ===== INVESTIGANDO PAYLOAD DO GLPI =====")
+        print(f"Content-Type: {request.content_type}")
+        print(f"URL Args: {request.args.to_dict()}")
+        print(f"Headers: {dict(request.headers)}")
+        print(f"Raw Data: {request.data}")
+
+        # Tenta JSON primeiro
         if request.is_json:
             data = request.get_json()
-        else:
-            # Se for form-data, converte para dict
+        elif request.form:
             data = request.form.to_dict()
+        elif request.args:
+            data = request.args.to_dict()
+        else:
+            # Se tudo falhar, tenta parsear o raw data
+            try:
+                data = json.loads(request.data.decode('utf-8'))
+            except:
+                data = {}
 
-        print(f"\n📨 ===== DADOS COMPLETOS DO GLPI =====")
+        print(f"\n📨 ===== DADOS EXTRAÍDOS DO GLPI =====")
         print(json.dumps(data, indent=2))
         print(f"===== FIM DOS DADOS =====")
 
