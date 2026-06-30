@@ -47,7 +47,14 @@ def glpi_webhook():
 def send_to_channel(channel_id, message):
     """Envia uma mensagem para um canal via API do Mattermost"""
     try:
+        print(f"🔗 Conectando à API: {MATTERMOST_API_URL}")
+        print(f"📝 Mensagem: {message[:100]}...")
+
         url = f"{MATTERMOST_API_URL}/posts"
+        print(f"📤 URL: {url}")
+        print(f"🔐 Headers: {HEADERS}")
+        print(f"📺 Canal ID: {channel_id}")
+
         response = requests.post(
             url,
             headers=HEADERS,
@@ -58,15 +65,20 @@ def send_to_channel(channel_id, message):
             timeout=5
         )
 
+        print(f"📊 Status Code: {response.status_code}")
+        print(f"📋 Response: {response.text[:500]}")
+
         if response.status_code == 201:
-            print(f"✅ Mensagem postada no canal")
+            print(f"✅ Mensagem postada no canal com sucesso!")
             return True
         else:
             print(f"❌ Erro ao postar: {response.status_code} - {response.text}")
             return False
 
     except Exception as e:
-        print(f"❌ Erro ao enviar para canal: {str(e)}")
+        print(f"❌ EXCEÇÃO ao enviar para canal: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return False
 
 def format_message(data):
