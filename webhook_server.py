@@ -22,16 +22,9 @@ app = Flask(__name__)
 MATTERMOST_API_URL = os.getenv('MATTERMOST_API_URL', 'http://192.168.1.10:8065/api/v4')
 MATTERMOST_TOKEN = os.getenv('MATTERMOST_TOKEN', 'kr3f8h4iifre3ycfb6kxjmxk3a')
 MATTERMOST_CHANNEL_ID = os.getenv('MATTERMOST_CHANNEL_ID', 'g4is7cbng7yg3d8p4o4us1i6re')
-GLPI_API_URL = os.getenv('GLPI_API_URL', 'https://glpi.macielvieiracoelho.com.br/api/v4')
-GLPI_TOKEN = os.getenv('GLPI_TOKEN', 'kr3f8h4iifre3ycfb6kxjmxk3a')
 
 MATTERMOST_HEADERS = {
     'Authorization': f'Bearer {MATTERMOST_TOKEN}',
-    'Content-Type': 'application/json'
-}
-
-GLPI_HEADERS = {
-    'Authorization': f'Bearer {GLPI_TOKEN}',
     'Content-Type': 'application/json'
 }
 
@@ -82,38 +75,6 @@ def glpi_webhook():
         print(f"❌ Erro no webhook: {str(e)}")
         return {'status': 'error', 'message': str(e)}, 500
 
-def get_latest_comment(ticket_id):
-    """Busca o comentário mais recente do GLPI API"""
-    try:
-        print(f"🔍 Buscando comentários do ticket #{ticket_id} no GLPI...")
-
-        url = f"{GLPI_API_URL}/Ticket/{ticket_id}/ITILFollowup"
-        print(f"📤 URL: {url}")
-
-        response = requests.get(
-            url,
-            headers=GLPI_HEADERS,
-            timeout=5
-        )
-
-        print(f"📊 Status Code: {response.status_code}")
-
-        if response.status_code == 200:
-            followups = response.json()
-            if isinstance(followups, list) and len(followups) > 0:
-                # Pega o último comentário (mais recente)
-                latest = followups[-1]
-                comment_text = latest.get('content', '')
-                if comment_text:
-                    print(f"✅ Comentário encontrado: {comment_text[:100]}...")
-                    return limpar_html(comment_text)
-
-        print(f"⚠️ Nenhum comentário encontrado")
-        return None
-
-    except Exception as e:
-        print(f"❌ Erro ao buscar comentários: {type(e).__name__}: {str(e)}")
-        return None
 
 def send_to_channel(channel_id, message):
     """Envia uma mensagem para um canal via API do Mattermost"""
@@ -167,40 +128,88 @@ def limpar_html(html_text):
 def format_message(data):
     """Formata os dados do GLPI em uma mensagem legível"""
 
-    # Extrai dados do GLPI (vem dentro de 'item')
     item = data.get('item', {})
-    event_type = data.get('event', 'Evento').capitalize()
+    item_type = item.get('itemtype', 'Ticket')
+    parent_item = data.get('parent_item', {})
 
-    # Mapeia nomes de eventos
-    event_names = {
-        'new': '🆕 Novo Chamado',
-        'update': '✏️ Chamado Atualizado',
-        'solved': '✅ Chamado Resolvido',
-        'closed': '🔒 Chamado Fechado'
-    }
-    event_display = event_names.get(data.get('event'), f'📋 {event_type}')
+    # Verifica se é um comentário (ITILFollowup) ou solução (ITILSolution)
+    is_followup = item_type == 'Ticket' and 'items_id' in item
 
-    # Extrai informações com suporte a estrutura aninhada
-    ticket_id = item.get('id', 'N/A')
-    title = item.get('name', 'Sem título')
+    if is_followup:
+        # É um comentário ou solução
+        ticket_id = parent_item.get('id', item.get('items_id', 'N/A'))
+        title = parent_item.get('name', 'Sem título')
+        status = parent_item.get('status', {})
+        status_name = status.get('name') if isinstance(status, dict) else status or 'N/A'
+        category = parent_item.get('category', {})
+        category_name = category.get('name') if isinstance(category, dict) else category or 'N/A'
+        user_recipient = parent_item.get('user_recipient', {})
+        user_name = user_recipient.get('name') if isinstance(user_recipient, dict) else user_recipient or 'N/A'
 
-    # Status, Categoria, etc podem ser dicts ou strings
-    status = item.get('status', {})
-    status_name = status.get('name') if isinstance(status, dict) else status or 'N/A'
+        # Extrai o usuário que fez o comentário
+        user = item.get('user', {})
+        comment_user = user.get('name') if isinstance(user, dict) else user or 'N/A'
 
-    category = item.get('category', {})
-    category_name = category.get('name') if isinstance(category, dict) else category or 'N/A'
+        # Conteúdo do comentário/solução
+        content_html = item.get('content', '')
+        content = limpar_html(content_html)[:300]
 
-    # Descrição/Conteúdo (limpar HTML)
-    content_html = item.get('content', '')
-    content = limpar_html(content_html)[:200]  # Primeiros 200 caracteres
+        # Determina se é solução ou acompanhamento
+        request_type = item.get('request_type', {})
+        request_type_name = request_type.get('name') if isinstance(request_type, dict) else request_type or ''
 
-    # Usuario que criou/recebeu
-    user_recipient = item.get('user_recipient', {})
-    user_name = user_recipient.get('name') if isinstance(user_recipient, dict) else user_recipient or 'N/A'
+        if 'Solução' in str(request_type_name) or 'solution' in str(item.get('itemtype', '')).lower():
+            event_display = '✅ Solução Adicionada'
+        else:
+            event_display = '💬 Novo Acompanhamento'
 
-    # Formata a mensagem com mention
-    message = f"""@{user_name}
+        # Formata a mensagem
+        message = f"""@{user_name}
+
+**{event_display}**
+- **Nº Chamado:** #{ticket_id}
+- **Título:** {title}
+- **Status:** {status_name}
+- **Categoria:** {category_name}
+- **Por:** {comment_user}
+- **Acompanhamento:** {content}
+- **Data:** {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}"""
+
+        return message
+
+    else:
+        # É um ticket normal (criação ou atualização)
+        event_type = data.get('event', 'Evento').capitalize()
+
+        # Mapeia nomes de eventos
+        event_names = {
+            'new': '🆕 Novo Chamado',
+            'update': '✏️ Chamado Atualizado',
+            'solved': '✅ Chamado Resolvido',
+            'closed': '🔒 Chamado Fechado'
+        }
+        event_display = event_names.get(data.get('event'), f'📋 {event_type}')
+
+        # Extrai informações
+        ticket_id = item.get('id', 'N/A')
+        title = item.get('name', 'Sem título')
+
+        status = item.get('status', {})
+        status_name = status.get('name') if isinstance(status, dict) else status or 'N/A'
+
+        category = item.get('category', {})
+        category_name = category.get('name') if isinstance(category, dict) else category or 'N/A'
+
+        # Descrição/Conteúdo
+        content_html = item.get('content', '')
+        content = limpar_html(content_html)[:200]
+
+        # Usuario
+        user_recipient = item.get('user_recipient', {})
+        user_name = user_recipient.get('name') if isinstance(user_recipient, dict) else user_recipient or 'N/A'
+
+        # Formata a mensagem
+        message = f"""@{user_name}
 
 **{event_display}**
 - **Nº Chamado:** #{ticket_id}
@@ -210,14 +219,7 @@ def format_message(data):
 - **Descrição:** {content}
 - **Data:** {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}"""
 
-    # Se for uma atualização, tenta buscar comentários
-    if data.get('event') == 'update':
-        comment = get_latest_comment(ticket_id)
-        if comment:
-            comment_preview = comment[:200]  # Primeiros 200 caracteres
-            message += f"\n\n📝 **Comentário:** {comment_preview}"
-
-    return message
+        return message
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -228,6 +230,5 @@ if __name__ == '__main__':
     print("🚀 Iniciando servidor de webhook GLPI...")
     print("📡 Mattermost API URL: " + MATTERMOST_API_URL)
     print("📺 Canal ID: " + MATTERMOST_CHANNEL_ID)
-    print("🔗 GLPI API URL: " + GLPI_API_URL)
     print("🏥 Health check: http://localhost:5000/health")
     app.run(host='0.0.0.0', port=5000, debug=True)
