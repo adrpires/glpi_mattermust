@@ -129,11 +129,11 @@ def format_message(data):
     """Formata os dados do GLPI em uma mensagem legível"""
 
     item = data.get('item', {})
-    item_type = item.get('itemtype', 'Ticket')
     parent_item = data.get('parent_item', {})
 
     # Verifica se é um comentário (ITILFollowup) ou solução (ITILSolution)
-    is_followup = item_type == 'Ticket' and 'items_id' in item
+    # Se tem 'items_id' no item, significa que é um acompanhamento/comentário do ticket pai
+    is_followup = 'items_id' in item and parent_item
 
     if is_followup:
         # É um comentário ou solução
