@@ -5,6 +5,8 @@ import json
 import os
 import sys
 import logging
+import re
+import html
 from datetime import datetime
 
 # Força o stdout a ser unbuffered
@@ -110,6 +112,18 @@ def send_to_channel(channel_id, message):
         traceback.print_exc()
         return False
 
+def limpar_html(html_text):
+    """Remove tags HTML e decodifica entidades HTML"""
+    if not html_text:
+        return ""
+    # Decodifica entidades HTML
+    text = html.unescape(html_text)
+    # Remove tags HTML
+    text = re.sub(r'<[^>]+>', '', text)
+    # Remove espaços em branco extras
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
 def format_message(data):
     """Formata os dados do GLPI em uma mensagem legível"""
 
@@ -137,7 +151,9 @@ def format_message(data):
     category = item.get('category', {})
     category_name = category.get('name') if isinstance(category, dict) else category or 'N/A'
 
-    priority = item.get('priority', 'N/A')
+    # Descrição/Conteúdo (limpar HTML)
+    content_html = item.get('content', '')
+    content = limpar_html(content_html)[:200]  # Primeiros 200 caracteres
 
     # Usuario que criou/recebeu
     user_recipient = item.get('user_recipient', {})
@@ -147,11 +163,11 @@ def format_message(data):
     message = f"""@{user_name}
 
 **{event_display}**
-- **ID:** #{ticket_id}
+- **Nº Chamado:** #{ticket_id}
 - **Título:** {title}
 - **Status:** {status_name}
-- **Prioridade:** {priority}
 - **Categoria:** {category_name}
+- **Descrição:** {content}
 - **Data:** {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}"""
 
     return message
