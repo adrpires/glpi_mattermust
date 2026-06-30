@@ -11,6 +11,8 @@ services:
       - MATTERMOST_API_URL=http://192.168.1.10:8065/api/v4
       - MATTERMOST_TOKEN=kr3f8h4iifre3ycfb6kxjmxk3a
       - MATTERMOST_CHANNEL_ID=y846awehtpnw3q8uh54zq8r9ta
+      - GLPI_API_URL=https://glpi.macielvieiracoelho.com.br/api/v4
+      - GLPI_TOKEN=kr3f8h4iifre3ycfb6kxjmxk3a
     restart: unless-stopped
     volumes:
       - ./logs:/app/logs

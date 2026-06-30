@@ -22,9 +22,16 @@ app = Flask(__name__)
 MATTERMOST_API_URL = os.getenv('MATTERMOST_API_URL', 'http://192.168.1.10:8065/api/v4')
 MATTERMOST_TOKEN = os.getenv('MATTERMOST_TOKEN', 'kr3f8h4iifre3ycfb6kxjmxk3a')
 MATTERMOST_CHANNEL_ID = os.getenv('MATTERMOST_CHANNEL_ID', 'g4is7cbng7yg3d8p4o4us1i6re')
+GLPI_API_URL = os.getenv('GLPI_API_URL', 'https://glpi.macielvieiracoelho.com.br/api/v4')
+GLPI_TOKEN = os.getenv('GLPI_TOKEN', 'kr3f8h4iifre3ycfb6kxjmxk3a')
 
-HEADERS = {
+MATTERMOST_HEADERS = {
     'Authorization': f'Bearer {MATTERMOST_TOKEN}',
+    'Content-Type': 'application/json'
+}
+
+GLPI_HEADERS = {
+    'Authorization': f'Bearer {GLPI_TOKEN}',
     'Content-Type': 'application/json'
 }
 
@@ -75,6 +82,39 @@ def glpi_webhook():
         print(f"❌ Erro no webhook: {str(e)}")
         return {'status': 'error', 'message': str(e)}, 500
 
+def get_latest_comment(ticket_id):
+    """Busca o comentário mais recente do GLPI API"""
+    try:
+        print(f"🔍 Buscando comentários do ticket #{ticket_id} no GLPI...")
+
+        url = f"{GLPI_API_URL}/Ticket/{ticket_id}/ITILFollowup"
+        print(f"📤 URL: {url}")
+
+        response = requests.get(
+            url,
+            headers=GLPI_HEADERS,
+            timeout=5
+        )
+
+        print(f"📊 Status Code: {response.status_code}")
+
+        if response.status_code == 200:
+            followups = response.json()
+            if isinstance(followups, list) and len(followups) > 0:
+                # Pega o último comentário (mais recente)
+                latest = followups[-1]
+                comment_text = latest.get('content', '')
+                if comment_text:
+                    print(f"✅ Comentário encontrado: {comment_text[:100]}...")
+                    return limpar_html(comment_text)
+
+        print(f"⚠️ Nenhum comentário encontrado")
+        return None
+
+    except Exception as e:
+        print(f"❌ Erro ao buscar comentários: {type(e).__name__}: {str(e)}")
+        return None
+
 def send_to_channel(channel_id, message):
     """Envia uma mensagem para um canal via API do Mattermost"""
     try:
@@ -83,12 +123,12 @@ def send_to_channel(channel_id, message):
 
         url = f"{MATTERMOST_API_URL}/posts"
         print(f"📤 URL: {url}")
-        print(f"🔐 Headers: {HEADERS}")
+        print(f"🔐 Headers: {MATTERMOST_HEADERS}")
         print(f"📺 Canal ID: {channel_id}")
 
         response = requests.post(
             url,
-            headers=HEADERS,
+            headers=MATTERMOST_HEADERS,
             json={
                 'channel_id': channel_id,
                 'message': message
@@ -170,6 +210,13 @@ def format_message(data):
 - **Descrição:** {content}
 - **Data:** {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}"""
 
+    # Se for uma atualização, tenta buscar comentários
+    if data.get('event') == 'update':
+        comment = get_latest_comment(ticket_id)
+        if comment:
+            comment_preview = comment[:200]  # Primeiros 200 caracteres
+            message += f"\n\n📝 **Comentário:** {comment_preview}"
+
     return message
 
 @app.route('/health', methods=['GET'])
@@ -179,7 +226,8 @@ def health():
 
 if __name__ == '__main__':
     print("🚀 Iniciando servidor de webhook GLPI...")
-    print("📡 API URL: " + MATTERMOST_API_URL)
+    print("📡 Mattermost API URL: " + MATTERMOST_API_URL)
     print("📺 Canal ID: " + MATTERMOST_CHANNEL_ID)
+    print("🔗 GLPI API URL: " + GLPI_API_URL)
     print("🏥 Health check: http://localhost:5000/health")
     app.run(host='0.0.0.0', port=5000, debug=True)
