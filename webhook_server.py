@@ -21,7 +21,9 @@ HEADERS = {
 def glpi_webhook():
     try:
         data = request.get_json()
-        print(f"\n📨 Dados recebidos do GLPI: {json.dumps(data, indent=2)}")
+        print(f"\n📨 ===== DADOS COMPLETOS DO GLPI =====")
+        print(json.dumps(data, indent=2))
+        print(f"===== FIM DOS DADOS =====")
 
         # Formata a mensagem para o Mattermost
         message = format_message(data)
