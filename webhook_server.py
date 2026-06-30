@@ -64,13 +64,19 @@ def glpi_webhook():
         item = data.get('item', {})
         parent_item = data.get('parent_item', {})
 
+        print(f"🔍 DEBUG - item: {json.dumps(item, indent=2)[:300]}")
+        print(f"🔍 DEBUG - parent_item existe: {bool(parent_item)}")
+
         # Determina quem é o recipient (ticket pai se for acompanhamento, ou do item direto)
         if parent_item:
             user_recipient = parent_item.get('user_recipient', {})
+            print(f"🔍 DEBUG - Usando user_recipient do parent_item: {user_recipient}")
         else:
             user_recipient = item.get('user_recipient', {})
+            print(f"🔍 DEBUG - Usando user_recipient do item: {user_recipient}")
 
         username = user_recipient.get('name') if isinstance(user_recipient, dict) else user_recipient
+        print(f"🔍 DEBUG - username extraído: {username}")
 
         if not username:
             print(f"⚠️ Nenhum user_recipient encontrado, enviando para canal público")
