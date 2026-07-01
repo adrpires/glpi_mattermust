@@ -261,13 +261,15 @@ def format_message(data):
             if full_name:
                 comment_user_full_name = full_name
 
-        # Formata a mensagem (sem @ no início, menciona quem respondeu)
-        message = f"""**{event_display}**
-- **Respondido por:** @{comment_user_full_name}
+        # Formata a mensagem
+        message = f"""@{user_name}
+
+**{event_display}**
 - **Nº Chamado:** #{ticket_id}
 - **Título:** {title}
 - **Status:** {status_name}
 - **Categoria:** {category_name}
+- **Por:** {comment_user_full_name}
 - **Acompanhamento:** {content}
 - **Data:** {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}"""
 
