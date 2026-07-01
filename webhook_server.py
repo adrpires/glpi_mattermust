@@ -319,5 +319,6 @@ if __name__ == '__main__':
     print("🚀 Iniciando servidor de webhook GLPI...")
     print("📡 Mattermost API URL: " + MATTERMOST_API_URL)
     print("📺 Canal ID: " + MATTERMOST_CHANNEL_ID)
+    print("🤖 Bot ID: " + MATTERMOST_BOT_ID)
     print("🏥 Health check: http://localhost:5000/health")
     app.run(host='0.0.0.0', port=5000, debug=True)
