@@ -141,12 +141,12 @@ def create_dm_channel(user_id):
         print(f"💬 Criando/buscando DM com user_id: {user_id}...")
         url = f"{MATTERMOST_API_URL}/channels/direct"
         print(f"📤 URL: {url}")
-        print(f"📤 Payload: {{'user_id': '{user_id}'}}")
+        print(f"📤 Payload: [{user_id}]")
 
         response = requests.post(
             url,
             headers=MATTERMOST_HEADERS,
-            json={'user_id': user_id},
+            json=[user_id],
             timeout=5
         )
 
