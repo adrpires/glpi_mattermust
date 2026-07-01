@@ -79,7 +79,7 @@ def glpi_webhook():
         else:
             print(f"📤 Enviando DM para @{username}...")
             # Busca o user_id no Mattermost
-            user_id = get_user_id_by_username(username)
+            user_id, full_name = get_user_id_by_username(username)
 
             if not user_id:
                 print(f"❌ Não conseguiu encontrar @{username} no Mattermost, enviando para canal público")
@@ -108,27 +108,28 @@ def glpi_webhook():
 
 
 def get_user_id_by_username(username):
-    """Busca o user_id no Mattermost pelo username"""
+    """Busca o user_id e nome completo no Mattermost pelo username"""
     try:
-        print(f"🔍 Buscando user_id para @{username}...")
+        print(f"🔍 Buscando user para @{username}...")
         url = f"{MATTERMOST_API_URL}/users/username/{username}"
-        print(f"📤 URL: {url}")
 
         response = requests.get(url, headers=MATTERMOST_HEADERS, timeout=5)
-        print(f"📊 Status: {response.status_code}")
-        print(f"📋 Response: {response.text[:500]}")
 
         if response.status_code == 200:
             user_data = response.json()
             user_id = user_data.get('id')
-            print(f"✅ User encontrado: {username} (ID: {user_id})")
-            return user_id
+            first_name = user_data.get('first_name', '')
+            last_name = user_data.get('last_name', '')
+            full_name = f"{first_name} {last_name}".strip()
+
+            print(f"✅ User encontrado: {username} (ID: {user_id}, Nome: {full_name})")
+            return user_id, full_name
         else:
             print(f"❌ User não encontrado: {username} - {response.status_code}")
-            return None
+            return None, None
     except Exception as e:
         print(f"❌ Erro ao buscar user: {type(e).__name__}: {str(e)}")
-        return None
+        return None, None
 
 def create_dm_channel(user_id):
     """Cria ou busca um DM channel com o usuário"""
