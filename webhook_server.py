@@ -252,15 +252,22 @@ def format_message(data):
         else:
             event_display = '💬 Novo Acompanhamento'
 
-        # Formata a mensagem
-        message = f"""@{user_name}
+        # Busca nome completo de quem fez o acompanhamento
+        comment_user_username = item.get('user', {}).get('name')
+        comment_user_full_name = comment_user  # padrão
 
-**{event_display}**
+        if comment_user_username:
+            _, full_name = get_user_id_by_username(comment_user_username)
+            if full_name:
+                comment_user_full_name = full_name
+
+        # Formata a mensagem (sem @ no início, menciona quem respondeu)
+        message = f"""**{event_display}**
+- **Respondido por:** @{comment_user_full_name}
 - **Nº Chamado:** #{ticket_id}
 - **Título:** {title}
 - **Status:** {status_name}
 - **Categoria:** {category_name}
-- **Por:** {comment_user}
 - **Acompanhamento:** {content}
 - **Data:** {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}"""
 
