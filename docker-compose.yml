@@ -9,7 +9,7 @@ services:
     environment:
       - FLASK_ENV=production
       - MATTERMOST_API_URL=http://192.168.1.10:8065/api/v4
-      - MATTERMOST_TOKEN=kr3f8h4iifre3ycfb6kxjmxk3a
+      - MATTERMOST_TOKEN=cnpw4q5jjjydmptewuzii9txdr
       - MATTERMOST_CHANNEL_ID=y846awehtpnw3q8uh54zq8r9ta
     restart: unless-stopped
     volumes:
