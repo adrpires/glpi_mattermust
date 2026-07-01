@@ -11,7 +11,7 @@ services:
       - MATTERMOST_API_URL=http://192.168.1.10:8065/api/v4
       - MATTERMOST_TOKEN=cnpw4q5jjjydmptewuzii9txdr
       - MATTERMOST_CHANNEL_ID=y846awehtpnw3q8uh54zq8r9ta
-      - MATTERMOST_BOT_ID=4ek8e1rkkbybfdr8hirghpiqzo
+      - MATTERMOST_BOT_ID=qufjhxr9yjfqfx99jgsquuq1ey
     restart: unless-stopped
     volumes:
       - ./logs:/app/logs

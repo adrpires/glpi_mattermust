@@ -73,9 +73,6 @@ def glpi_webhook():
 
         username = user_recipient.get('name') if isinstance(user_recipient, dict) else user_recipient
 
-        print(f"🔍 DEBUG - user_recipient: {user_recipient}")
-        print(f"🔍 DEBUG - username final: {username}")
-
         if not username:
             print(f"⚠️ Nenhum user_recipient encontrado, enviando para canal público")
             success = send_to_channel(MATTERMOST_CHANNEL_ID, message)
