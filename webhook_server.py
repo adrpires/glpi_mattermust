@@ -22,6 +22,7 @@ app = Flask(__name__)
 MATTERMOST_API_URL = os.getenv('MATTERMOST_API_URL', 'http://192.168.1.10:8065/api/v4')
 MATTERMOST_TOKEN = os.getenv('MATTERMOST_TOKEN', 'kr3f8h4iifre3ycfb6kxjmxk3a')
 MATTERMOST_CHANNEL_ID = os.getenv('MATTERMOST_CHANNEL_ID', 'g4is7cbng7yg3d8p4o4us1i6re')
+MATTERMOST_BOT_ID = os.getenv('MATTERMOST_BOT_ID', '4ek8e1rkkbybfdr8hirghpiqzo')
 
 MATTERMOST_HEADERS = {
     'Authorization': f'Bearer {MATTERMOST_TOKEN}',
@@ -64,19 +65,13 @@ def glpi_webhook():
         item = data.get('item', {})
         parent_item = data.get('parent_item', {})
 
-        print(f"🔍 DEBUG - item: {json.dumps(item, indent=2)[:300]}")
-        print(f"🔍 DEBUG - parent_item existe: {bool(parent_item)}")
-
         # Determina quem é o recipient (ticket pai se for acompanhamento, ou do item direto)
         if parent_item:
             user_recipient = parent_item.get('user_recipient', {})
-            print(f"🔍 DEBUG - Usando user_recipient do parent_item: {user_recipient}")
         else:
             user_recipient = item.get('user_recipient', {})
-            print(f"🔍 DEBUG - Usando user_recipient do item: {user_recipient}")
 
         username = user_recipient.get('name') if isinstance(user_recipient, dict) else user_recipient
-        print(f"🔍 DEBUG - username extraído: {username}")
 
         if not username:
             print(f"⚠️ Nenhum user_recipient encontrado, enviando para canal público")
@@ -141,12 +136,12 @@ def create_dm_channel(user_id):
         print(f"💬 Criando/buscando DM com user_id: {user_id}...")
         url = f"{MATTERMOST_API_URL}/channels/direct"
         print(f"📤 URL: {url}")
-        print(f"📤 Payload: {{'user_ids': ['{user_id}']}}")
+        print(f"📤 Payload: [{MATTERMOST_BOT_ID}, {user_id}]")
 
         response = requests.post(
             url,
             headers=MATTERMOST_HEADERS,
-            json={'user_ids': [user_id]},
+            json=[MATTERMOST_BOT_ID, user_id],
             timeout=5
         )
 
@@ -158,7 +153,7 @@ def create_dm_channel(user_id):
             channel_id = channel_data.get('id')
             channel_type = channel_data.get('type')
             channel_name = channel_data.get('name')
-            print(f"✅ Channel criado/encontrado:")
+            print(f"✅ DM channel criado/encontrado:")
             print(f"   - ID: {channel_id}")
             print(f"   - Type: {channel_type}")
             print(f"   - Name: {channel_name}")
